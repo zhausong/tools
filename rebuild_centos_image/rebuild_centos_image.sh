@@ -45,7 +45,7 @@ rebuild_repo_xml (){
     yum -y install createrepo mkisofs
     cd  ${SYSTEM_DIR}
     declare -x discinfo=$(head -1 .discinfo)
-    mv   ${SYSTEM_DIR}/repodata/x86_64-comps.xml       ${SYSTEM_DIR}/repodata/comps.xml 
+    mv   ${SYSTEM_DIR}/repodata/*x86_64-comps.xml       ${SYSTEM_DIR}/repodata/comps.xml 
     createrepo   -g   ${SYSTEM_DIR}/repodata/comps.xml  ${SYSTEM_DIR}
     createrepo -u "media://$discinfo" -g  ${SYSTEM_DIR}/repodata/comps.xml   ${SYSTEM_DIR}
     #mkisofs -o ${SYSTEM_NAME}.iso -b isolinux/isolinux.bin -c isolinux/boot.cat    -no-emul-boot  -boot-load-size 4  -boot-info-table  -R  -J  -v  -V  itnihao  -T ${SYSTEM_DIR}  

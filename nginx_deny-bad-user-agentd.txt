@@ -1,0 +1,8 @@
+        location / {
+                index index.html index.htm index.php;
+        if ($http_user_agent ~ (curl|LWP::Simple|winhttp|clshttp|HTTrack|harvest|nsauditor|dirbuster|pangolin|nmap|sqlninja|grendel-scan|hydra|perl|HTMLParser|libwww|BBBike|sqlmap|w3af|owasp|Nikto|fimap|havij|PycURL|sae|zmeu|BabyKrokodil|python|netsparker|httperf|ApacheBench|webbench|JoeDog))
+        {
+                return 443;
+        }
+
+        }

@@ -25,7 +25,7 @@ then
     read ret
     ls ${ret}
     [ "$?" != 0 ] && echo "本地ISO不存在或者路径错误，退出运行" && exit 1
-    [ "$?" == 0 ] && mount -o loop ${ret}  /mnt/cd
+    [ "$?" == 0 ] && mount -o loop ${ret}  /mnt/cd1
 fi
 }
 

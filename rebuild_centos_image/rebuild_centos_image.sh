@@ -31,7 +31,7 @@ fi
 
 
 copy_ISO_file (){
-awk  '{print $2}' install.log |sed -e '/^$/d' -e 's/^ //g'|grep -v FINISHED  >/home/source/packges.list
+awk  '{print $2}' ~/install.log |sed -e '/^$/d' -e 's/^ //g'|grep -v FINISHED  >/home/source/packges.list
 for packges in $(cat /home/source/packges.list)
 do
     cp /mnt/cd1/Packages/$packges*  /home/centos/Packages

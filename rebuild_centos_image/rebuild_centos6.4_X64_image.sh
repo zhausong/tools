@@ -48,7 +48,7 @@ do
     [ $? != 0 ] && echo "copy  $packges is faied!"&& cp ${ISO_MOUNT_POIONT2}/Packages/$packges*    ${SYSTEM_DIR}/Packages
     [ $? != 0 ] && echo "$packges is not exist in ${ISO_MOUNT_POIONT2}/Packages/"
 done
-    rsync -a --exclude=Packages ${ISO_MOUNT_POIONT1}  ${SYSTEM_DIR}
+    rsync -a --exclude=Packages ${ISO_MOUNT_POIONT1}/  ${SYSTEM_DIR}
 }
 
 

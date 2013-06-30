@@ -59,7 +59,7 @@ rebuild_repo_xml (){
     ##########################centos6.3_X64###############################
     #mv   ${SYSTEM_DIR}/repodata/*x86_64-comps.xml       ${SYSTEM_DIR}/repodata/comps.xml
     #createrepo   -g   ${SYSTEM_DIR}/repodata/comps.xml  ${SYSTEM_DIR}
-    #createrepo -u "media://$discinfo" -g  ${SYSTEM_DIR}/repodata/c6-x86_64-comps.xml   ${SYSTEM_DIR}
+    #createrepo -u "media://$discinfo" -g  ${SYSTEM_DIR}/repodata/comps.xml   ${SYSTEM_DIR}
     ######################################################################
 
 

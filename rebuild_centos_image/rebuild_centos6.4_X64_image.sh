@@ -2,7 +2,7 @@
 #拷贝系统安装所需的软件包
 #author:itnihao
 #mail:admin@itnihao.com
-@date:2013-06-28
+#date:2013-06-28
 
 SYSTEM_DIR=/home/centos
 SYSTEM_NAME=itnihaoOS

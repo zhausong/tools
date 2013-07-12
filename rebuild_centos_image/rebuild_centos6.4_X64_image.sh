@@ -2,42 +2,53 @@
 #拷贝系统安装所需的软件包
 #author:itnihao
 #mail:admin@itnihao.com
-@date:2013-06-28
+#date:2013-06-28
 
 SYSTEM_DIR=/home/centos
 SYSTEM_NAME=itnihaoOS
+ISO_MOUNT_POIONT1=/mnt/cd1
+ISO_MOUNT_POIONT2=/mnt/cd2
 
 mount_ISO (){
-    mkdir /mnt/cd1
-    mkdir /home/centos/Packages  -p
+    mkdir ${ISO_MOUNT_POIONT1}
+    mkdir ${ISO_MOUNT_POIONT2}
+    mkdir ${SYSTEM_DIR}/Packages  -p
     mkdir /home/source
 echo "请确保光驱里面有ISO文件，且可以被挂载"
 echo "请输入Y/y继续,任意键则退出运行"
 read ret
 [ ${ret} != "Y" -a ${ret} != "y" ] && exit 1
-echo  "echo 默认情况，挂载的是/dev/cdro到/mnt/cd1"
-    mount /dev/cdrom  /mnt/cd1
-     ls /mnt/cd1 |grep Packages
-if [ "$?" != 0 ] 
+echo  "echo 默认情况，挂载的是/dev/cdrom到${ISO_MOUNT_POIONT1}"
+     ls ${ISO_MOUNT_POIONT1} |grep Packages
+if [ "$?" == 0 ] 
 then
-    echo "光盘挂载不成功，请手动重新挂载，或者尝试本地ISO挂载"
-    echo "请输入本地ISO的路径:"
-    read ret
-    ls ${ret}
-    [ "$?" != 0 ] && echo "本地ISO不存在或者路径错误，退出运行" && exit 1
-    [ "$?" == 0 ] && mount -o loop ${ret}  /mnt/cd1
+    echo "光驱已经挂载"
+else
+    echo "正在尝试挂载本地光驱到/mnt/cd1,请稍等片刻"
+    mount /dev/cdrom  ${ISO_MOUNT_POIONT1}
+    ls ${ISO_MOUNT_POIONT1} |grep Packages
+    if [ "$?" != 0 ]
+    then
+        echo "光盘挂载不成功，请手动重新挂载，或者尝试本地ISO挂载"
+        echo "请输入本地ISO的路径:"
+        read ret
+        ls ${ret}
+        [ "$?" != 0 ] && echo "本地ISO不存在或者路径错误，退出运行" && exit 1
+        [ "$?" == 0 ] && mount -o loop ${ret}  ${ISO_MOUNT_POIONT1}
+    fi
 fi
 }
 
 
 copy_ISO_file (){
-awk  '{print $2}' ~/install.log |sed -e '/^$/d' -e 's/^ //g'|grep -v FINISHED  >/home/source/packges.list
+awk  '{print $2}' install.log |sed -e '/^$/d' -e 's/^ //g'|grep -v FINISHED|grep -v ":"  >/home/source/packges.list
 for packges in $(cat /home/source/packges.list)
 do
-    cp /mnt/cd1/Packages/$packges*  /home/centos/Packages
-    [ $? != 0 ] && echo "copy  $packges is faied!"&& cp /mnt/cd2/Packages/$packges*    /home/centos/Packages
+    cp ${ISO_MOUNT_POIONT1}/Packages/$packges*  ${SYSTEM_DIR}/Packages
+    [ $? != 0 ] && echo "copy  $packges is faied!"&& cp ${ISO_MOUNT_POIONT2}/Packages/$packges*    ${SYSTEM_DIR}/Packages
+    [ $? != 0 ] && echo "$packges is not exist in ${ISO_MOUNT_POIONT2}/Packages/"
 done
-    rsync -a --exclude=Packages /mnt/cd1/ /home/centos 
+    rsync -a --exclude=Packages ${ISO_MOUNT_POIONT1}/  ${SYSTEM_DIR}
 }
 
 
@@ -45,9 +56,18 @@ rebuild_repo_xml (){
     yum -y install createrepo mkisofs
     cd  ${SYSTEM_DIR}
     declare -x discinfo=$(head -1 .discinfo)
-    mv   ${SYSTEM_DIR}/repodata/*x86_64-comps.xml       ${SYSTEM_DIR}/repodata/comps.xml 
-    createrepo   -g   ${SYSTEM_DIR}/repodata/comps.xml  ${SYSTEM_DIR}
-    createrepo -u "media://$discinfo" -g  ${SYSTEM_DIR}/repodata/comps.xml   ${SYSTEM_DIR}
+    ##########################centos6.3_X64###############################
+    #mv   ${SYSTEM_DIR}/repodata/*x86_64-comps.xml       ${SYSTEM_DIR}/repodata/comps.xml
+    #createrepo   -g   ${SYSTEM_DIR}/repodata/comps.xml  ${SYSTEM_DIR}
+    #createrepo -u "media://$discinfo" -g  ${SYSTEM_DIR}/repodata/comps.xml   ${SYSTEM_DIR}
+    ######################################################################
+
+
+    ##########################centos6.4_X64###############################
+    mv   ${SYSTEM_DIR}/repodata/*x86_64-comps.xml       ${SYSTEM_DIR}/repodata/c6-x86_64-comps.xml 
+    createrepo   -g   ${SYSTEM_DIR}/repodata/c6-x86_64-comps.xml  ${SYSTEM_DIR}
+    createrepo -u "media://$discinfo" -g  ${SYSTEM_DIR}/repodata/c6-x86_64-comps.xml   ${SYSTEM_DIR}
+   
     #mkisofs -o ${SYSTEM_NAME}.iso -b isolinux/isolinux.bin -c isolinux/boot.cat    -no-emul-boot  -boot-load-size 4  -boot-info-table  -R  -J  -v  -V  itnihao  -T ${SYSTEM_DIR}  
 }
 
@@ -143,7 +163,7 @@ EOF
 }
 build_new_ISO (){
     cd ${SYSTEM_DIR}
-    mkisofs -o ${SYSTEM_NAME}.iso -b isolinux/isolinux.bin -c isolinux/boot.cat    -no-emul-boot  -boot-load-size 4  -boot-info-table  -R  -J  -v  -V  itnihao  -T ${SYSTEM_DIR}
+    mkisofs -o ${SYSTEM_NAME}.iso -input-charset utf-8 -b isolinux/isolinux.bin -c isolinux/boot.cat    -no-emul-boot  -boot-load-size 4  -boot-info-table  -R  -J  -v  -V  itnihao  -T ${SYSTEM_DIR}
 }
 main (){
     mount_ISO

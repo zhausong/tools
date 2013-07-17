@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Add{% endblock %}
+{% block content %}
+<h1>Paste something</h1>
+<form action="" method="POST">
+Title: {{ form.title }}<br>
+Poster: {{ form.poster }}<br>
+Syntax: {{ form.syntax }}<br>
+{{ form.content }}<br>
+<input type="submit" name="submit" value="Paste" id="submit">
+</form>
+{% endblock %}

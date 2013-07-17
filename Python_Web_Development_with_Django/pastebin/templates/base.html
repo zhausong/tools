@@ -1,0 +1,14 @@
+<html>
+<head>
+<title>{% block title %}{% endblock %}</title>
+<style type="text/css">
+    body { margin: 30px; font-family: sans-serif; background: #fff; }
+    h1 { background: #ccf; padding: 20px; }
+    pre { padding: 20px; background: #ddd; }
+</style>
+</head>
+<body>
+    <p><a href="/paste/add/">Add one</a> &bull; <a href="/paste/">List all</a></p>
+    {% block content %}{% endblock %}
+</body>
+</html>

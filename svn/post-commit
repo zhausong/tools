@@ -1,0 +1,13 @@
+#!/bin/bash
+
+mail="admin#itnihao.com"
+svn_path="/var/webdata/"
+path=$(svnlook  dirs-changed ${svn_path})
+author=$(svnlook info ${svn_path}|awk NR=="1")
+changedate=$(svnlook info ${svn_path}|awk NR=="2")
+svn_version=$(svnlook info ${svn_path}|awk NR=="3")
+message=$(svnlook info ${svn_path}|awk NR=="4")
+for mail_list in ${mail}
+do
+    echo -e "svn版本:${svn_version}\n作者:${author}\n更改时间:${changedate}\n更新信息:${message}\n文件更改目录:${path}" | mail -s "svn update version ${svn_version}" ${mail_list}
+done

@@ -1,7 +1,9 @@
 #!/bin/bash
+export LANG=en_US.UTF-8
+
 
 mail="admin#itnihao.com"
-svn_path="/var/webdata/"
+svn_path="/var/svn/webdata/"
 path=$(svnlook  dirs-changed ${svn_path})
 author=$(svnlook info ${svn_path}|awk NR=="1")
 changedate=$(svnlook info ${svn_path}|awk NR=="2")
@@ -9,5 +11,11 @@ svn_version=$(svnlook info ${svn_path}|awk NR=="3")
 message=$(svnlook info ${svn_path}|awk NR=="4")
 for mail_list in ${mail}
 do
-    echo -e "svn°æ±¾:${svn_version}\n×÷Õß:${author}\n¸ü¸ÄÊ±¼ä:${changedate}\n¸üÐÂÐÅÏ¢:${message}\nÎÄ¼þ¸ü¸ÄÄ¿Â¼:${path}" | mail -s "svn update version ${svn_version}" ${mail_list}
+    echo -e "svnï¿½æ±¾:${svn_version}\nï¿½ï¿½ï¿½ï¿½:${author}\nï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½:${changedate}\nï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢:${message}\nï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿Â¼:${path}" | mail -s "svn update version ${svn_version}" ${mail_list}
+done
+
+
+for dir in $(svnlook dirs-changed /var/svn/webdata/)
+do
+    svn update -N /opt/web/data/$dir --username "admin" --password "admin"
 done

@@ -1,4 +1,6 @@
 #!/bin/bash
+#author:itnihao
+#http://www.itnihao.com
 export LANG=en_US.UTF-8
 
 
@@ -11,7 +13,8 @@ svn_version=$(svnlook info ${svn_path}|awk NR=="3")
 message=$(svnlook info ${svn_path}|awk NR=="4")
 for mail_list in ${mail}
 do
-    echo -e "svn�汾:${svn_version}\n����:${author}\n����ʱ��:${changedate}\n������Ϣ:${message}\n�ļ�����Ŀ¼:${path}" | mail -s "svn update version ${svn_version}" ${mail_list}
+    echo -e "svn版本:${svn_version}\n作者:${author}\n更改时间:${changedate}\n更新信息:${message}\n文件更改目录:${path}" \
+    | mail -s "svn update version ${svn_version}" ${mail_list}
 done
 
 

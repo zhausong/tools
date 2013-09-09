@@ -1,0 +1,904 @@
+1.configuration rpm environment
+   rpm -ivh http://mirrors.sohu.com/fedora-epel/6/x86_64/epel-release-6-8.noarch.rpm
+   epel中关于salt的包:
+====================================================
+   salt-api.noarch : A web api for to access salt the parallel remote execution system
+   salt-master.noarch : Management component for salt, a parallel remote execution system
+   salt-minion.noarch : Client component for salt, a parallel remote execution system
+   salt.noarch : A parallel remote execution system
+   salt-cloud.noarch : Generic cloud provisioning tool
+====================================================
+   hosts设置
+   server和client的/etc/hosts配置如下
+====================================================
+192.168.1.253 test.itnihao.com
+192.168.1.254 salt.itniaho.com
+====================================================
+  需要注意的是，client必须可以解析服务端的dns，即主机名
+
+2.server install
+  yum install salt-master
+  vim /etc/salt/master
+====================================================
+      interface: 服务端监听IP  #非必须修改，默认是0.0.0.0
+====================================================
+启动服务
+   /etc/init.d/salt-master start
+调试模式:
+   salt-master  -l debug
+后台运行:
+   salt-master  -d
+
+监听端口
+   4505(publish_port):salt的消息发布系统
+   4506(ret_port):salt客户端与服务端通信的端口
+要保证这2个端口能通信正常
+如果开启iptables 需要添加以下2条规则
+====================================================
+-A INPUT -m state --state new -m tcp -p tcp --dport 4505 -j ACCEPT
+-A INPUT -m state --state new -m tcp -p tcp --dport 4506 -j ACCEPT
+====================================================
+
+3.client  install
+  yum install salt-minion
+  vim /etc/salt/minion
+====================================================
+      master: 服务端主机名
+      id: 客户端主机名(在服务端看到的客户端的名字)
+====================================================
+启动服务
+    /etc/init.d/salt-minion start
+
+4.key的颁发
+#salt-key  
+====================================================
+Accepted Keys:
+Unaccepted Keys:
+test.itnihao.com
+Rejected Keys:
+====================================================
+
+#salt-key -a  test.itnihao.com
+====================================================
+Accepted Keys:
+test.itnihao.com
+Unaccepted Keys:
+Rejected Keys:
+====================================================
+5.运行测试
+
+# salt "test.itnihao.com" test.ping
+test.itnihao.com:
+    True
+
+
+到以上步骤，说明服务端到客户端通信正常，基础环境搭建成功。
+那么接下来，应该是配置个性化的服务。例如软件包的安装，用户的管理，文件的同步等，这些需要对配置文件进行修改才能实现：
+
+
+shell#mkdir  /srv/salt
+5.1 入口文件
+#vim /srv/salt/top.sls
+====================================================
+base:
+   'test.itnihao.com':
+   - git
+   - myapp
+   - user
+====================================================
+
+5.2 同步文件的例子
+#vim /srv/salt/myapp.sls 
+====================================================
+/etc/myapp.conf:                                  # ID declaration      注意这里的名字将和实际位置有关
+   file.managed:                                  # state declaration   申明哪一种state被运用 
+      - source: salt://files/myapp.conf           # function declaration 哪个function将会被file.managed调用
+      - mode: 644
+      - owner: root
+      - group: root
+      - template: jinja
+====================================================
+注意，这里的salt://files/myapp.conf是相对于/srv/salt/目录的路径
+
+#vim /srv/salt/files/myapp.conf
+====================================================
+文件内容
+====================================================
+
+5.3 用户管理
+#vim /srv/salt/user.sls 
+====================================================
+admin:
+   user.present:
+       - fullname: administrator
+       - password: '$6$Lr.pTdgs7xxjXH7C$p9rm/IGEiBNFGOx8tCgajXsU74OBvjcgLmO4VNlTdBdnHMvaTQVshBiQXwM8Ua4961oLm/3wre97L7.9dTWJs.'
+       - shell: /bin/bash
+       - home: /home/adminsvn
+====================================================
+注意这里的密码是hash过的，可以用grub-crypt 工具生成hash密码
+
+
+
+5.4推送配置到客户端
+#salt 'test.itnihao.com' state.highstate -v
+
+5.5客户端同步服务端
+#salt-call state.highstate
+
+
+5.6变量
+在salt中grains相对于puppet中的facter。
+那么grains到底是什么呢？grains是一个可以获取客户端变量。
+salt "*" grains.items
+5.7 关于salt执行命令带的参数说明
+-E   用正则表达式来匹配对象
+-L
+-G
+-N
+-C
+-X
+-I
+-S
+1:基础知识
+    1：targeting
+        salt '*' test.ping
+        引号中以实现很强大的minion的过滤与匹配技术
+        文档:http://docs.saltstack.com/topics/targeting/compound.html
+
+salt 'shell正则' 命令
+salt -E 'prel 正则'
+salt -N $group 命令
+salt -L 'server_id1,server_id2,server_id3'  命令
+
+G	Grains glob match	G@os:Ubuntu
+E	PCRE Minion id match	E@web\d+\.(dev|qa|prod)\.loc
+P	Grains PCRE match	P@os:(RedHat|Fedora|CentOS)
+L	List of minions	        L@minion1.example.com,minion3.domain.com or bl*.domain.com
+I	Pillar glob match	I@pdata:foobar
+S	Subnet/IP addr match	S@192.168.1.0/24 or S@192.168.1.100
+R	Range cluster match	R@%foo.bar
+D	Minion Data match	D@key:value
+
+        示例:
+salt -C 'webserv* and G@os:Debian or E@web-dc1-srv.*' test.ping
+
+salt '*' test.ping
+Match all minions in the example.net domain or any of the example domains:
+salt '*.example.net' test.ping
+salt '*.example.*' test.ping
+Match all the webN minions in the example.net domain (web1.example.net, web2.example.net . . .
+webN.example.net):
+salt 'web?.example.net' test.ping
+Match the web1 through web5 minions:
+salt 'web[1-5]' test.ping
+Match the web-x, web-y, and web-z minions:
+salt 'web-[x-z]' test.ping
+
+salt -E 'web1-(prod|devel)' test.ping
+salt -L 'web1,web2,web3' test.ping
+
+
+top.sls
+base:
+ 'web1-(prod|devel)':
+    - match: pcre
+    - webserver
+
+
+
+    2：nodegroup
+       对minion进行分组
+        文档: http://docs.saltstack.com/topics/targeting/nodegroups.html
+        在master的配置文件中按如下格式定义:
+        nodegroups:
+            group1: 'L@foo.domain.com,bar.domain.com,baz.domain.com or bl*.domain.com'
+            group2: 'G@os:Debian and foo.domain.com'
+        在state或者pillar中引用的时候如下:
+            base:
+                group1:
+                    - match: nodegroup
+                    - webserver
+
+
+    3：grains  第一次启动minion收集的系统信息常量，这意味着此类信息是静态的。
+       grains接口可以为salt模块和组建提供一些信息，例如，使用适当的salt minion命令可以自动汇报一些系统信息
+       The grains interface is made available to Salt modules and components so that the right salt minion commands are automatically available on the right systems.
+       记住重要的一点，grains是在salt minion启动的时候加载的信息，所以这个信息是静态的。也就是意味这grains不能改变。所以，grains比较适合的数据场合如系统内核版本，操作系统类型等。
+
+        minion基本信息的管理
+        文档:http://docs.saltstack.com/topics/targeting/grains.html
+        基本使用:
+            salt '*' grains.ls  查看grains分类
+            salt '*' grains.items 查看grains所有信息
+            salt '*' grains.item osrelease 查看grains某个信息
+        示例：
+            salt '*' grains.item osrelease
+                minoin1:
+                  osrelease: 6.2
+        在用salt进行管理客户端的时候或者写state的时候都可以引用grains的变量
+
+自己写grains
+#mkdir /srv/salt/_grains && cd /srv/salt/_grains
+
+/srv/salt/_grains/mes.py
+===========================================================================
+#!/usr/bin/env python
+
+def info():
+    message={}
+    message['m1']='my salt grains 1'
+    message['m2']='my salt grains 2'
+    return message
+===========================================================================
+同步grains到minion
+
+# salt "test.itnihao.com" saltutil.sync_all
+# salt "test.itnihao.com"  saltutil.sync_grains
+
+注意，这里的同步命令有2个
+
+查看自定义的grains
+
+# salt 'test.itnihao.com' grains.item m2 
+===========================================================================
+test.itnihao.com:
+  m2: my salt grains 2
+===========================================================================
+# salt 'test.itnihao.com' grains.item m1
+===========================================================================
+test.itnihao.com:
+  m1: my salt grains 1
+===========================================================================
+
+
+
+
+4：pillar
+        salt敏感信息的管理,只有匹配到的节点才能看到和使用
+        文档:http://docs.saltstack.com/topics/tutorials/pillar.html
+        默认:pillar数据定义文件存储路径:/srv/pillar
+        入口文件:/srv/pillar/top.sls
+        格式:
+            base:
+                "targeting":
+                    - $pillar            #名字为pillar.sls的文件来存放对匹配到的minion的变量
+            $pillar.sls
+            基本:
+                $key: $value
+                 state引用方式:
+                    {{ pillar['$key'] }}
+           复杂:
+                users:
+                       thatch: 1000
+                       shouse: 1001
+                       utahdave: 1002
+                       redbeard: 1003
+                state引用方式:
+                    {% for user, uid in pillar.get('users', {}).items() %}
+                        {{user}}:
+                        user.present:
+                            - uid: {{uid}}
+                    {% endfor %}
+
+        查看节点的pillar数据：
+            salt 'client2' pillar.data
+        同步pillar：
+            salt '*' saltutil.refresh_pillar
+
+        附：这里我们可以看到，pallar中也可以使用jinja（后面会提到）做一些处理
+一个例子
+******************************************************************************************************************
+定义pillar
+/srv/pillar/top.sls 
+====================================================
+base:
+   'test.itnihao.com':
+   - test
+====================================================
+/srv/pillar/test.sls 
+====================================================
+num1: aa
+num2: bb
+name: user1
+====================================================
+
+ /srv/salt/top.sls 
+====================================================
+base:
+   'test.itnihao.com':
+   - myapp
+====================================================
+/srv/salt/myapp.sls 
+====================================================
+/etc/myapp.conf:
+   file.managed:
+      - source: salt://files/myapp.conf
+      - mode: 644
+      - owner: root
+      - group: root
+      - template: jinja
+====================================================
+/srv/salt/files/myapp.conf 
+====================================================
+test 
+hostname {{grains['fqdn']}}
+{{pillar['num1']}}
+{{pillar['num2']}}
+{{pillar['name']}}
+**********{{pillar['num1']}}**********************
+====================================================
+/srv/salt/myapp.sls 
+====================================================
+/etc/myapp.conf:
+   file.managed:
+      - source: salt://files/myapp.conf
+      - mode: 644
+      - owner: root
+      - group: root
+      - template: jinja
+====================================================
+master端运行命令
+shell#salt '*' state.highstate -v
+minion端查看
+#cat /etc/myapp.conf 
+test 
+hostname localhost.localdomain
+aa
+bb
+user1
+**********aa**********************
+
+******************************************************************************************************************
+
+    5：minion
+        即为salt的客户端
+
+2:状态管理
+    1:state
+        salt基于minion进行状态的管理
+        1:state语法
+            文档:http://docs.saltstack.com/ref/states/all/index.html
+            结构:
+                $ID:  #state的名字
+                    $state:     #要管理的模块类型
+                    - $State states #该模块的状态
+            示例：
+                vim:
+                    pkg:
+                    {% if grains['os_family'] == 'RedHat' %}
+                    - name: vim-enhanced
+                    {% elif grains['os'] == 'Debian' %}
+                    - name: vim-nox
+                    {% elif grains['os'] == 'Ubuntu' %}
+                    - name: vim-nox
+                    {% endif %}
+                    - installed
+                如果是redhard系列的就安装 vim-enhanced，如果系统是Debian或者Ubuntu就安装vim-nox
+            附：state默认使用jinja（http://jinja.pocoo.org/）的模板语法，
+                文档地址：  http://jinja.pocoo.org/docs/templates/
+        2：state的逻辑关系：
+            文档：http://docs.saltstack.com/ref/states/ordering.html
+
+            require：依赖某个state，在运行此state前，先运行依赖的state，依赖可以有多个
+                httpd:
+                  pkg:
+                    - installed
+                  file.managed:
+                    - name: /etc/httpd/conf/httpd.conf
+                    - source: salt://httpd/httpd.conf
+                    - require:
+                      - pkg: httpd
+
+            watch：在某个state变化时运行此模块
+                redis:
+                  pkg:
+                    - latest
+                  file.managed:
+                    - source: salt://redis/redis.conf
+                    - name: /etc/redis.conf
+                    - require:
+                      - pkg: redis
+                  service.running:
+                    - enable: True
+                    - watch:
+                      - file: /etc/redis.conf
+                      - pkg: redis
+
+            附：watch除具备require功能外，还增了关注状态的功能
+
+            order：
+            优先级比require和watch低
+                有order指定的state比没有order指定的优先级高
+                vim:
+                  pkg.installed:
+                    - order: 1
+
+                 想让某个state最后一个运行，可以用last
+        3：state与minion
+            将临时给minoin加个state
+                salt 'minion1' state.sls 'vim'  #给minion1加一个vim的state
+                执行该命令后可以立即看到输出结果
+
+    2:highstate
+        给minion永久下添加状态
+        文档： http://docs.saltstack.com/ref/states/highstate.html
+        默认配置文件：/srv/salt/top.sls
+        语法：
+        '*':
+            - core
+            - wsproxy
+        /srv/salt/目录结构：
+            .
+            ├── core.sls
+            ├── top.sls
+            └── wsproxy
+                ├── init.sls
+                ├── websocket.py
+                └── websockify
+
+        应用：
+            salt "minion1" state.highstate
+        测试模式：
+            salt "minion1" state.highstate -v test=True
+    3:salt schedule
+        默认的state只有在服务端调用的时候才执行，很多时候我们希望minon自觉的去保持在某个状态
+        文档：http://docs.saltstack.com/topics/jobs/schedule.html
+        cat /srv/pillar/top.sls
+        base:
+          "*":
+            - schedule
+             cat /srv/pillar/schedule.sls
+        schedule:
+          highstate:
+            function: state.highstate
+            minutes: 30
+        如上配置：
+            minion会每30分钟从master拉取一次配置，进行自我配置
+3:实时管理
+    有时候我们需要临时的查看一台或多台机器上的某个文件，或者执行某个命令
+        1:cmd.run
+            用法 salt '$targeting' cmd.run '$cmd'
+            示例：salt '*' cmd.run 'hostname'
+            执行下这样的命令，马上就感受到效果了，速度还贼快
+        2:module
+            同时，salt也将一些常用的命令做了集成
+            文档：http://docs.saltstack.com/ref/modules/all/index.html
+            这里几乎涵盖了我们所有的常用命令
+            比如：
+                查看所有节点磁盘使用情况
+                    salt '*' disk.usage
+ 4：无master
+      文档：http://docs.saltstack.com/topics/tutorials/quickstart.html
+      主要应该在测试和salt单机管理的时候
+
+
+
+关于top文件的书写
+查看/etc/salt/master，可以看到默认的top文件位置是/srv/salt/top.sls
+#file_roots:
+#  base:
+#    - /srv/salt
+由于默认是没有/srv/salt的，所以需要手动建立此文件
+mkdir  /srv/salt
+vim    /srv/salt/top.sls 
+============================================================================
+base:
+   'test.itnihao.com':
+   - myapp
+   - httpd
+   - user
+   - nginx
+============================================================================
+语法格式说明
+sls文件用的是yaml数据格式，方便易用，书写简单
+
+base是file_roots里面定义的，可以代表分组
+test.itnihao.com是主机名
+:后面是资源内容
+- 后面必须有空格，后面是模块名称
+
+
+
+/srv/salt/myapp.sls 
+===========================================================================
+/etc/myapp.conf:
+   file.managed:
+      - source: salt://files/myapp.conf
+      - mode: 644
+      - owner: root
+      - group: root
+      - template: jinja
+===========================================================================
+/srv/salt/httpd.sls 
+===========================================================================
+httpd:
+   pkg:
+       - installed
+   service.running:
+       - enable: True
+===========================================================================
+/srv/salt/user.sls 
+===========================================================================
+admin:
+   user.present:
+       - fullname: administrator
+       - password: '$6$Lr.pTdgs7xxjXH7C$p9rm/IGEiBNFGOx8tCgajXsU74OBvjcgLmO4VNlTdBdnHMvaTQVshBiQXwM8Ua4961oLm/3wre97L7.9dTWJs.'
+       - shell: /bin/bash
+       - home: /home/adminsvn
+       - group: nginx
+jdoe:
+    user.absent
+===========================================================================
+
+
+===========================================================================
+nginx:
+  pkg:
+    - installed
+  service:
+    - running
+    - enable: True
+    - require:
+      - pkg: nginx
+    - watch:
+      - file: /etc/nginx/nginx.conf
+      - file: /etc/nginx/vhost
+
+/etc/nginx/nginx.conf:
+  file.managed:
+    - source: salt://nginx/nginx.conf
+
+/etc/nginx/sites.d:
+  file.recurse:
+    - source: salt://nginx/vhost
+===========================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+第二章 grains
+
+第三章 写自己的模块
+在master端
+关于自定义模块的路径可以为下面2种:
+/srv/salt/modules
+/srv/salt/_modules
+当路径在此时候，执行state.highstate或者是saltutil.sync_modules，saltutil.sync_all函数功能，会自动同步到minions
+ 
+mkdir  /srv/salt/_modules  && cd /srv/salt/_modules
+ /srv/salt/_modules/os_info.py 
+===========================================================================
+#!/usr/bin/evn python
+
+import os
+def echo_os_type():
+    '''
+    echo os type infomation
+    CLI Example:
+        slat '*' os_info.echo_os_type
+    '''
+    return  os.uname()
+#注意里面的注释风格
+===========================================================================
+shell#salt "*" saltutil.sync_all        
+===========================================================================
+test.itnihao.com:
+    |_
+      - modules.os_info
+    |_
+    |_
+    |_
+    |_
+    |_
+===========================================================================
+shell#salt "*" os_info.echo_os_type
+===========================================================================
+test.itnihao.com:
+    - Linux
+    - test.itnihao.com
+    - 2.6.32-220.23.1.el6.x86_64
+    - #1 SMP Mon Jun 18 18:58:52 BST 2012
+    - x86_64
+===========================================================================
+
+
+
+前面写了自己的模块，下面再写一个稍微复杂点的模块，写一个tcp连接数的模块
+还是在master端写
+/srv/salt/_modules/get_tcp_connect.py 
+===========================================================================
+#!/usr/bin/env python
+
+import subprocess
+def tcpconnect():
+    '''
+    get tcp connect status
+    CLI Example:
+    salt '*' get_tcp_connect.tcpconnect
+    '''
+    tcp_status=subprocess.Popen("netstat -an|awk '/^tcp/ {++S[$NF]} END {for (a in S) print a,S[a]}'",stdout=subprocess.PIPE,shell=True)
+    return tcp_status.stdout.read()
+===========================================================================
+shell#salt "*" saltutil.sync_all  
+shell#salt "*" sys.doc|grep tcp 
+===========================================================================        
+get_tcp_connect.tcpconnect:
+    get tcp connect status
+    salt '*' get_tcp_connect.tcpconnect
+===========================================================================
+shell#salt '*' get_tcp_connect.tcpconnect
+
+
+本文参考引用以下资料，在此谢谢大家的共享：
+http://wiki.saltstack.cn/docs
+http://intothesaltmine.org/blog/html/index.html
+http://blog.halfss.com/blog/2013/05/22/yun-wei-zi-dong-hua-zhi-saltxue-xi-bi-ji/
+http://www.shencan.net/index.php/category/%E8%87%AA%E5%8A%A/saltstack/
+
+
+
+第四章   salt文件管理
+文件，目录，链接的操作管理
+文件管理
+/etc/http/conf/http.conf:
+    file.managed:
+        - source: salt://apache/http.conf
+        - user: root
+        - group: root
+        - mode: 644
+        - template: jinja
+        - context:
+             custom_var: "override"
+        - defaults:
+             custom_var: "default value"
+             other_var: 123
+       - require:
+           - file: /opt/nginx1
+       - replace: True
+/opt/nginx1:
+    file.recurse:
+       - source: salt://files/nginx
+
+注意 一下，这里定义了2个变量custom_var other_var
+如果需要对这2个变量进行引用，则可以在salt://apache/http.conf里面进行变量引用
+{{custom_var}}
+{{other_var}}
+
+context下面可以定义变量内容
+defauls 如果context里面没有定义的变量，就会用defauls里面定义的变量
+require 是依赖关系，表示在建立此文件前，必须存在的文件，当然这个文件出现在sls文件里面，不是本地文件
+
+
+关键字
+name    文件的名称
+source  将从master上面下载的文件，路径为salt://path/file
+source_hash 文件的hash值 例如 /etc/rc.conf md5=ef6e82e4006dee563d98ada2a2a80a27  
+                              /etc/resolv.conf sha256=c8525aee419eb649f0233be91c151178b30f0dff8ebbdcc8de71b1d5c8bc06a
+user    文件的属主
+group   文件的属组
+mode    权限
+template 从master上面下载的文件模板
+makedirs 创建文件夹
+replace  是否替换文件，默认是True，如果设置为False，则不会替换同名文件，不改变文件里面的内容
+context  定义变量可以在模板中使用的。
+defaults 默认的变量在模板中使用
+backup   是否备份
+
+
+目录管理
+/srv/stuff/substuf:
+    file.directory:
+        - user: fred
+        - group: users
+        - mode: 755
+        - makedirs: True
+======================================
+关键字
+
+name 目录名称
+user  用户
+group 用户组
+recurse 用户权限是否继承到下级
+mode  权限 
+makedirs 设置为True，则目录不存在会创建
+clean 目录下所有的文件或者文件夹将被清除
+require 依赖的资源，如软件包或者文件
+exclude_pat 当clean设置为True，此值可以设置需要排除的资源
+
+
+目录权限递归
+
+/srv/stuff/substuf:
+    file.directory:
+        - uer: fred
+        - group: users
+        - mode: 755
+        - makedirs: True
+        - recurse:
+            - user
+            - group
+
+关键字
+name  目录名称
+source  源目录salt://protocol
+clean  
+require
+user
+group
+dir_mode
+file-mode
+template
+context
+defaults
+include_empty
+include_pat
+exclude_pat
+
+
+
+创建链接
+/etc/grub.conf:
+     file.symlink:
+          - target: /boot/grub/grub.conf
+
+
+
+
+
+
+递归同步目录
+/opt/nginx:
+    file.recurse:
+       - source: salt://files/nginx
+
+
+这样会把salt://files/nginx所有的文件夹和文件递归同步到客户端
+
+
+
+追加文件内容
+
+/etc/motd:
+    file.append:
+        - text: |
+            Thou hadst better eat salt with the Philosophers of Greece,
+            than sugar with the Courtiers of Italy.
+            - Benjamin Franklin
+
+
+file.rename(name, source, force=False, makedirs=False)
+file.sed(name, before, after, limit=’‘, backup=’.bak’, options=’-r -e’, flags=’g’)
+
+
+
+# Disable the epel repo by default
+/etc/yum.repos.d/epel.repo:
+    file.sed:
+        - before: 1
+        - after: 0
+        - limit: ^enabled=
+# Remove ldap from nsswitch
+/etc/nsswitch.conf:
+    file.sed:
+        - before: ’ldap’
+        - after: ’’
+        - limit: ’^passwd:’
+
+
+第五章 软件包管理
+
+
+
+
+pkg.installed关键字
+name  名称
+fromrepo 从哪个源安装
+skip_verify 跳过GPG签名验证
+version     软件包版本
+httpd:
+pkg.installed:
+- fromrepo: mycustomrepo
+- skip_verify: True
+- version: 2.0.6~ubuntu3
+
+
+pkgs  一组数据包安装
+mypkgs：
+    pkg.installed:
+        - pkgs:
+        - foo
+        - baz
+
+
+
+mypkgs:
+    pkg.installed:
+        - sources:
+        - foo: salt://rpms/foo.rpm
+        - bar: http://somesite.org/bar.rpm
+        - baz: ftp://someothersite.org/baz.rpm
+        - qux: /minion/path/to/qux.rpm
+
+
+
+pkg.latest
+关键字
+name
+fromrepo
+skip_verify
+pkgs
+
+mypkgs:
+    pkg.latest:
+        - pkgs:
+        - foo
+        - bar
+        - baz
+
+删除软件包
+pkg.purged(name,**kwargs)
+pkg.removed(name, **kwargs)
+
+
+
+
+第六章  服务状态的管理
+redis:
+    service:
+        - running
+        - enable: True
+        - reload: True
+        - watch:
+            - pkg: redis
+
+
+service.dead(name, enable=None, sig=None, **kwargs)
+service.disabled(name, **kwargs)
+service.enabled(name, **kwargs)
+service.mod_watch(name, sig=None, reload=False, full_restart=False)
+service.running(name, enable=None, sig=None, **kwargs)
+
+
+第七章 用户管理
+fred:
+    user.present:
+        - fullname: Fred Jones
+        - shell: /bin/zsh
+        - home: /home/fred
+        - uid: 4000
+        - gid: 4000
+        - groups:
+        - wheel
+        - storage
+        - games
+testuser:
+    user.absent
+
+user.absent(name, purge=False, force=False)
+user.present(name, uid=None, gid=None, gid_from_name=False, groups=None,
+optional_groups=None, home=True, password=None, en-force_password=True, shell=None, unique=True, system=False,fullname=’‘, roomnumber=’‘, workphone=’‘, homephone=’‘)
+
+
+
+
+hosts文件管理
+
+salt-master:
+host.present:
+- ip: 192.168.0.42
+
+
+
+host.absent(name, ip)
+host.present(name, ip)
+
+

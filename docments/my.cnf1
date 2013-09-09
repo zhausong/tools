@@ -1,0 +1,105 @@
+#BEGIN CONFIG INFO
+#DESCR: 4GB RAM, InnoDB only, ACID, few connections, heavy queries
+#TYPE: SYSTEM
+#END CONFIG INFO
+[client]
+#password	= [your_password]
+port		= 3100
+socket		= /database/s100/mysql/socket/mysql.sock
+default-character-set=utf8
+# *** Application-specific options follow here ***
+
+#
+# The MySQL server
+#
+[mysqld]
+#skip-grant-table
+# generic configuration options
+port		= 3100
+socket		= /database/s100/mysql/socket/mysql.sock
+
+log-bin=/database/s100/mysql/logs/mysql-bin
+binlog_format=mixed
+log-slow-queries = /database/s100/mysql/logs/slowquery.log
+slow_query_log
+long_query_time = 2
+log-error = /database/s100/mysql/logs/log-error.log
+datadir = /database/s100/mysql/data
+skip-name-resolve
+default-character-set=utf8
+back_log = 50
+#skip-networking
+max_connections = 2000
+max_connect_errors = 4294967295
+table_open_cache = 2048
+#external-locking
+max_allowed_packet = 32M
+binlog_cache_size = 1M
+max_heap_table_size = 64M
+read_buffer_size = 4M
+read_rnd_buffer_size = 16M
+sort_buffer_size = 6M
+join_buffer_size = 8M
+thread_cache_size = 8
+thread_concurrency = 8
+query_cache_size = 64M
+query_cache_limit = 2M
+ft_min_word_len = 4
+#default-storage-engine = INNODB
+thread_stack = 192K
+transaction_isolation = REPEATABLE-READ
+tmp_table_size = 64M
+#log_slave_updates
+server-id = 1
+key_buffer_size = 128M
+bulk_insert_buffer_size = 64M
+myisam_sort_buffer_size = 128M
+myisam_max_sort_file_size = 10G
+myisam_repair_threads = 1
+myisam_recover
+##################################################
+innodb_additional_mem_pool_size = 512M
+innodb_buffer_pool_size = 1G
+innodb_data_file_path = ibdata1:1000M:autoextend
+innodb_data_home_dir = /database/s100/mysql/data
+innodb_file_io_threads = 4
+#innodb_force_recovery=1
+innodb_thread_concurrency = 16
+innodb_flush_log_at_trx_commit = 2
+#innodb_fast_shutdown
+innodb_log_buffer_size = 8M
+innodb_log_file_size = 256M
+innodb_log_files_in_group = 3
+#innodb_log_group_home_dir
+innodb_max_dirty_pages_pct = 90
+innodb_flush_method=O_DIRECT
+innodb_lock_wait_timeout = 120
+
+
+[mysqldump]
+# Do not buffer the whole result set in memory before writing it to
+# file. Required for dumping very large tables
+quick
+
+max_allowed_packet = 16M
+
+[mysql]
+no-auto-rehash
+character-set-server=utf8
+# Only allow UPDATEs and DELETEs that use keys.
+#safe-updates
+
+[myisamchk]
+key_buffer_size = 512M
+sort_buffer_size = 512M
+read_buffer = 8M
+write_buffer = 8M
+
+[mysqlhotcopy]
+interactive-timeout
+
+[mysqld_safe]
+# Increase the amount of open files allowed per process. Warning: Make
+# sure you have set the global system limit high enough! The high value
+# is required for a large number of opened tables
+open-files-limit = 8192

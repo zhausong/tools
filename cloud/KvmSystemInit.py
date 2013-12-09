@@ -100,7 +100,7 @@ def InstallCloudstackManagement():
 
     for k in cloudstack-agent-4.2.0-1.el6.x86_64.rpm cloudstack-awsapi-4.2.0-1.el6.x86_64.rpm cloudstack-baremetal-agent-4.2.0-1.el6.x86_64.rpm cloudstack-cli-4.2.0-1.el6.x86_64.rpm  cloudstack-common-4.2.0-1.el6.x86_64.rpm cloudstack-management-4.2.0-1.el6.x86_64.rpm cloudstack-usage-4.2.0-1.el6.x86_64.rpm
     do
-        [ -f ${k} ] || wget http://cloudstack.apt-get.eu/rhel/4.2/cloudstack-agent-4.2.0-1.el6.x86_64.rpm
+        [ -f ${k} ] || wget http://cloudstack.apt-get.eu/rhel/4.2/${k}
     done 
 
     egrep "cloudstack" /etc/yum.repos.d/cloudstack.repo || cat >/etc/yum.repos.d/cloudstack.repo <<EOF

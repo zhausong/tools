@@ -167,16 +167,17 @@ EOF
     EOF
 
 
-    [ -d "/export/secondary" ] ||mkdir /export/secondary
+    [ -d "/export/secondary" ] ||mkdir /export/secondary -p
+    [ -d "/export/primary" ] ||mkdir /export/primary -p
     service   rpcbind restart
     service   nfs     restart
     chkconfig rpcbind on
     chkconfig nfs     on
-    mount -t nfs 127.0.0.1:/export/secondary /export/secondary
+    mount -t nfs 127.0.0.1:/export/secondary /mnt
 
 
     #导入系统虚拟机模板文件
-    /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m /export/secondary  -f /opt/cloudstack/acton-systemvm-02062012.qcow2.bz2 -h kvm -F
+    /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m /mnt  -f /opt/cloudstack/acton-systemvm-02062012.qcow2.bz2 -h kvm -F
     cloudstack-setup-management
 
 

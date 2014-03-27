@@ -141,7 +141,7 @@ EOF
         -e  '/#listen_tls = 0/alisten_tls = 0'  \
         -e '/#listen_tcp = 1/alisten_tcp = 1' \
         -e '/#tcp_port = "16509"/atcp_port = "16509"' \
-        -e '/#mdns_adv = 0/amdns_adv = 0'
+        -e '/#mdns_adv = 0/amdns_adv = 0' \
         -e  '/#auth_tcp = "sasl"/aauth_tcp = "none"'  /etc/libvirt/libvirtd.conf 
     [ "$?" == 0 ] && service libvirtd restart
 
